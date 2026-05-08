@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cider Remote</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111; color: #fff; min-height: 100vh; }
+.nav { display: flex; background: #1a1a1a; border-bottom: 0.5px solid #2a2a2a; }
+.nav-btn { flex: 1; padding: 12px 4px; background: none; border: none; color: #666; font-size: 11px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.15s; }
+.nav-btn i { font-size: 22px; }
+.nav-btn.active { color: #fa2d48; }
+.page { display: none; padding: 1rem; max-width: 500px; margin: 0 auto; }
+.page.active { display: flex; flex-direction: column; height: calc(100vh - 49px); overflow-y: auto; }
+.artwork { width: 100%; aspect-ratio: 1; max-height: 35vh; flex-shrink: 1; border-radius: 12px; background: #1e1e1e; margin-bottom: 1rem; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.artwork img { width: 100%; height: 100%; object-fit: cover; }
+.artwork i { font-size: 60px; color: #333; }
+.track-info { margin-bottom: 1.5rem; }
+.track-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.track-artist { font-size: 15px; color: #aaa; margin-bottom: 2px; }
+.track-album { font-size: 13px; color: #666; }
+.progress-wrap { margin-bottom: 1.25rem; }
+.progress-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; cursor: pointer; margin-bottom: 6px; }
+.progress-fill { height: 100%; background: #fa2d48; border-radius: 2px; pointer-events: none; }
+.progress-times { display: flex; justify-content: space-between; font-size: 11px; color: #666; }
+.controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.ctrl-btn { background: none; border: none; color: #fff; cursor: pointer; padding: 8px; font-size: 28px; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, color 0.15s; }
+.ctrl-btn:active { transform: scale(0.9); }
+.ctrl-btn.sm { font-size: 22px; color: #aaa; }
+.ctrl-btn.active { color: #fa2d48; }
+.ctrl-btn.play { font-size: 52px; }
+.volume-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+.volume-row input { flex: 1; accent-color: #fa2d48; }
+.volume-row span { font-size: 12px; color: #666; min-width: 28px; text-align: right; }
+.action-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+.action-btn { flex: 1; background: #1e1e1e; border: 0.5px solid #2a2a2a; border-radius: 10px; color: #aaa; font-size: 12px; padding: 10px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: background 0.15s; }
+.action-btn i { font-size: 20px; }
+.action-btn:active { background: #2a2a2a; }
+.search-wrap { position: relative; margin-bottom: 1rem; }
+.search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #666; font-size: 18px; pointer-events: none; }
+.search-input { width: 100%; background: #1e1e1e; border: 0.5px solid #2a2a2a; border-radius: 10px; color: #fff; font-size: 15px; padding: 12px 12px 12px 40px; outline: none; }
+.search-input:focus { border-color: #fa2d48; }
+.search-tabs { display: flex; gap: 8px; margin-bottom: 1rem; }
+.tab-btn { background: #1e1e1e; border: 0.5px solid #2a2a2a; border-radius: 20px; color: #aaa; font-size: 13px; padding: 6px 14px; cursor: pointer; transition: all 0.15s; }
+.tab-btn.active { background: #fa2d48; border-color: #fa2d48; color: #fff; }
+.item-list { display: flex; flex-direction: column; gap: 2px; }
+.item { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 10px; cursor: pointer; transition: background 0.15s; }
+.item:active { background: #1e1e1e; }
+.item-art { width: 44px; height: 44px; border-radius: 6px; background: #1e1e1e; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.item-art img { width: 100%; height: 100%; object-fit: cover; }
+.item-art i { font-size: 20px; color: #444; }
+.item-art.round { border-radius: 50%; }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-sub { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.item-action { background: none; border: none; color: #666; font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+.queue-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
+.queue-item.current { background: #1e1e1e; }
+.queue-num { font-size: 12px; color: #555; min-width: 20px; text-align: center; }
+.queue-item.current .queue-num { color: #fa2d48; }
+.section-title { font-size: 13px; color: #666; font-weight: 500; margin: 1rem 0 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.empty { text-align: center; color: #555; font-size: 14px; padding: 2rem 0; }
+.loading { text-align: center; color: #555; font-size: 14px; padding: 1rem 0; }
+.err-bar { font-size: 12px; color: #e05555; text-align: center; padding: 4px; min-height: 20px; }
+.settings-card { background: #1e1e1e; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+.settings-card label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
+.settings-card input, .settings-card select { width: 100%; background: #2a2a2a; border: 0.5px solid #444; border-radius: 8px; color: #fff; font-size: 13px; padding: 8px 10px; outline: none; margin-bottom: 12px; }
+.settings-card select option { background: #2a2a2a; }
+.save-btn { width: 100%; background: #fa2d48; border: none; border-radius: 8px; color: #fff; font-size: 14px; padding: 12px; cursor: pointer; }
+.save-btn:active { opacity: 0.8; }
+.settings-msg { font-size: 12px; color: #2ecc71; text-align: center; margin-top: 8px; min-height: 16px; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <button class="nav-btn active" onclick="showPage('player')" id="nav-player"><i class="ti ti-player-play"></i><span data-t="nav_player">Spiller</span></button>
+  <button class="nav-btn" onclick="showPage('search')" id="nav-search"><i class="ti ti-search"></i><span data-t="nav_search">Søk</span></button>
+  <button class="nav-btn" onclick="showPage('playlists')" id="nav-playlists"><i class="ti ti-playlist"></i><span data-t="nav_playlists">Spillelister</span></button>
+  <button class="nav-btn" onclick="showPage('queue')" id="nav-queue"><i class="ti ti-list"></i><span data-t="nav_queue">Kø</span></button>
+  <button class="nav-btn" onclick="showPage('settings')" id="nav-settings"><i class="ti ti-settings"></i><span data-t="nav_settings">Innst.</span></button>
+</div>
+
+<div class="page active" id="page-player">
+  <div id="err-bar" class="err-bar"></div>
+  <div class="artwork" id="artwork"><i class="ti ti-music" aria-hidden="true"></i></div>
+  <div class="track-info">
+    <div class="track-title" id="track-title" data-t="nothing_playing">Ingenting spilles</div>
+    <div class="track-artist" id="track-artist"></div>
+    <div class="track-album" id="track-album"></div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress-bar" onclick="seekClick(event)">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="progress-times"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
+  </div>
+  <div class="controls">
+    <button class="ctrl-btn sm" id="shuffle-btn" onclick="toggleShuffle()"><i class="ti ti-arrows-shuffle"></i></button>
+    <button class="ctrl-btn" onclick="cmd('previous')"><i class="ti ti-player-skip-back-filled"></i></button>
+    <button class="ctrl-btn play" onclick="togglePlay()"><i class="ti ti-player-play-filled" id="play-icon"></i></button>
+    <button class="ctrl-btn" onclick="cmd('next')"><i class="ti ti-player-skip-forward-filled"></i></button>
+    <button class="ctrl-btn sm" id="repeat-btn" onclick="toggleRepeat()"><i class="ti ti-repeat" id="repeat-icon"></i></button>
+  </div>
+  <div class="volume-row">
+    <button id="mute-btn" class="ctrl-btn sm" onclick="toggleMute()" style="padding:0;margin-right:4px"><i class="ti ti-volume-3"></i></button>
+    <input type="range" min="0" max="100" step="1" id="vol" oninput="setVolume(this.value)" />
+    <span id="vol-out">50</span>
+  </div>
+  <div class="action-row">
+    <button class="action-btn" onclick="addToLibrary()"><i class="ti ti-library-plus"></i><span data-t="add_to_library">Legg til</span></button>
+    <button class="action-btn" onclick="setRating(1)"><i class="ti ti-heart"></i><span data-t="like">Lik</span></button>
+    <button class="action-btn" onclick="setRating(-1)"><i class="ti ti-thumb-down"></i><span data-t="dislike">Misliker</span></button>
+    <button class="action-btn" onclick="showPage('queue')"><i class="ti ti-list"></i><span data-t="queue">Kø</span></button>
+  </div>
+</div>
+
+<div class="page" id="page-search">
+  <div class="search-wrap">
+    <i class="ti ti-search"></i>
+    <input type="search" class="search-input" id="search-input" data-t-placeholder="search_placeholder" placeholder="Søk i Apple Music..." oninput="searchDebounce()" />
+  </div>
+  <div class="search-tabs">
+    <button class="tab-btn active" onclick="setSearchType('songs')" id="tab-songs" data-t="search_songs">Sanger</button>
+    <button class="tab-btn" onclick="setSearchType('albums')" id="tab-albums" data-t="search_albums">Album</button>
+    <button class="tab-btn" onclick="setSearchType('artists')" id="tab-artists" data-t="search_artists">Artister</button>
+  </div>
+  <div id="search-results" class="item-list"><div class="empty" data-t="search_prompt">Søk etter musikk</div></div>
+</div>
+
+<div class="page" id="page-playlists">
+  <div class="section-title" data-t="my_playlists">Mine spillelister</div>
+  <div id="playlist-list" class="item-list"><div class="loading" data-t="loading_playlists">Laster spillelister...</div></div>
+</div>
+
+<div class="page" id="page-queue">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <div class="section-title" style="margin:0" data-t="queue_title">Spillekø</div>
+    <button onclick="clearQueue()" style="background:none;border:none;color:#666;font-size:13px;cursor:pointer;" data-t="clear_queue">Tøm kø</button>
+  </div>
+  <div id="queue-list" class="item-list"><div class="loading" data-t="loading_queue">Laster kø...</div></div>
+</div>
+
+<div class="page" id="page-settings">
+  <div class="section-title" data-t="settings_title">Innstillinger</div>
+  <div class="settings-card">
+    <label data-t="settings_token">API-token</label>
+    <input type="password" id="settings-token" data-t-placeholder="settings_token_placeholder" placeholder="Lim inn nytt token her" />
+    <label data-t="settings_language">Språk</label>
+    <select id="settings-language">
+      <option value="no">Norsk</option>
+      <option value="en">English</option>
+    </select>
+    <label data-t="settings_country">Apple Music-land</label>
+    <select id="settings-country">
+      <option value="no">Norge</option>
+      <option value="us">USA</option>
+    </select>
+    <button class="save-btn" onclick="saveSettings()" data-t="settings_save">Lagre</button>
+    <div class="settings-msg" id="settings-msg"></div>
+  </div>
+  <div class="settings-card">
+    <label style="color:#555;font-size:11px;">Token</label>
+    <div id="token-status" style="font-size:13px;color:#888;">...</div>
+  </div>
+</div>
+<script>
+let isPlaying = false;
+let currentDuration = 0;
+let currentTime = 0;
+let isMuted = false;
+let volumeBeforeMute = 50;
+let searchType = 'songs';
+let searchTimer = null;
+let storefrontCountry = 'no';
+let lang = {};
+
+async function loadLang(code) {
+  const res = await fetch('/lang/' + code + '.json');
+  lang = await res.json();
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.getAttribute('data-t');
+    if (lang[key]) el.textContent = lang[key];
+  });
+  document.querySelectorAll('[data-t-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-t-placeholder');
+    if (lang[key]) el.placeholder = lang[key];
+  });
+  document.documentElement.lang = code;
+}
+
+function t(key) { return lang[key] || key; }
+
+async function api(path, method = 'GET', body = null) {
+  setErr('');
+  try {
+    const opts = { method, headers: {} };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    const res = await fetch(path, opts);
+    if (!res.ok) { setErr('HTTP ' + res.status); return null; }
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await res.json();
+    return {};
+  } catch(e) { setErr(t('err_no_cider')); return null; }
+}
+
+async function amapi(path) { return api('/api/v1/amapi/run-v3', 'POST', { path }); }
+function setErr(msg) { const el = document.getElementById('err-bar'); if (el) el.textContent = msg; }
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'playlists') loadPlaylists();
+  if (name === 'queue') loadQueue();
+  if (name === 'settings') loadSettings();
+}
+
+function formatTime(ms) {
+  const s = Math.floor((ms || 0) / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function artworkUrl(url, size = 200) {
+  if (!url) return null;
+  return url.replace('{w}', size).replace('{h}', size);
+}
+
+function renderArt(url, icon = 'ti-music', round = false) {
+  const cls = round ? 'item-art round' : 'item-art';
+  if (url) return `<div class="${cls}"><img src="${artworkUrl(url)}" loading="lazy" /></div>`;
+  return `<div class="${cls}"><i class="ti ${icon}"></i></div>`;
+}
+
+async function fetchStatus() {
+  setErr('');
+  const data = await api('/api/v1/playback/now-playing');
+  if (!data) {
+    const cfg = await fetch('/settings/config').then(r => r.json()).catch(() => ({}));
+    setErr(cfg.hasToken ? t('err_no_cider') : t('err_no_token'));
+    return;
+  }
+  if (!data.info) return;
+  const info = data.info;
+  const titleEl = document.getElementById('track-title');
+  if (info.name || info.title) {
+    titleEl.textContent = info.name || info.title;
+  } else {
+    titleEl.textContent = t('nothing_playing');
+  }
+  document.getElementById('track-artist').textContent = info.artistName || '';
+  document.getElementById('track-album').textContent = info.albumName || '';
+  const artEl = document.getElementById('artwork');
+  if (info.artwork?.url) {
+    artEl.innerHTML = `<img src="${artworkUrl(info.artwork.url, 400)}" alt="cover" />`;
+  } else {
+    artEl.innerHTML = `<i class="ti ti-music"></i>`;
+  }
+  currentDuration = info.durationInMillis || 0;
+  currentTime = (info.currentPlaybackTime || 0) * 1000;
+  updateProgress();
+  document.getElementById('shuffle-btn').classList.toggle('active', info.shuffleMode === 1);
+  const repeatIcon = document.getElementById('repeat-icon');
+  const repeatBtn = document.getElementById('repeat-btn');
+  if (info.repeatMode === 1) { repeatIcon.className = 'ti ti-repeat-once'; repeatBtn.classList.add('active'); }
+  else if (info.repeatMode === 2) { repeatIcon.className = 'ti ti-repeat'; repeatBtn.classList.add('active'); }
+  else { repeatIcon.className = 'ti ti-repeat'; repeatBtn.classList.remove('active'); }
+  const playing = await api('/api/v1/playback/is-playing');
+  if (playing !== null) {
+    isPlaying = playing.is_playing === true;
+    document.getElementById('play-icon').className = isPlaying ? 'ti ti-player-pause-filled' : 'ti ti-player-play-filled';
+  }
+  const volData = await api('/api/v1/playback/volume');
+  if (volData?.volume !== undefined) {
+    const v = Math.round(volData.volume * 100);
+    document.getElementById('vol').value = v;
+    document.getElementById('vol-out').textContent = v;
+  }
+}
+
+function updateProgress() {
+  if (!currentDuration) return;
+  const pct = Math.min(100, (currentTime / currentDuration) * 100);
+  document.getElementById('progress-fill').style.width = pct.toFixed(1) + '%';
+  document.getElementById('time-current').textContent = formatTime(currentTime);
+  document.getElementById('time-total').textContent = formatTime(currentDuration);
+}
+
+function seekClick(e) {
+  if (!currentDuration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pos = Math.floor(((e.clientX - rect.left) / rect.width) * currentDuration / 1000);
+  api('/api/v1/playback/seek', 'POST', { position: pos });
+}
+
+async function togglePlay() {
+  await api('/api/v1/playback/playpause', 'POST');
+  isPlaying = !isPlaying;
+  document.getElementById('play-icon').className = isPlaying ? 'ti ti-player-pause-filled' : 'ti ti-player-play-filled';
+}
+
+async function cmd(action) { await api('/api/v1/playback/' + action, 'POST'); setTimeout(fetchStatus, 600); }
+async function toggleShuffle() { await api('/api/v1/playback/toggle-shuffle', 'POST'); setTimeout(fetchStatus, 300); }
+async function toggleRepeat() { await api('/api/v1/playback/toggle-repeat', 'POST'); setTimeout(fetchStatus, 300); }
+async function addToLibrary() { await api('/api/v1/playback/add-to-library', 'POST'); setErr(t('added_to_library')); }
+
+async function setRating(rating) {
+  const res = await api('/api/v1/playback/set-rating', 'POST', { rating });
+  if (res) {
+    const btn = rating === 1 ? document.querySelector('[onclick="setRating(1)"]') : document.querySelector('[onclick="setRating(-1)"]');
+    btn.style.color = rating === 1 ? '#2ecc71' : '#e05555';
+    setTimeout(() => btn.style.color = '', 1000);
+  }
+}
+
+let volTimer;
+function setVolume(val) {
+  document.getElementById('vol-out').textContent = val;
+  clearTimeout(volTimer);
+  volTimer = setTimeout(() => api('/api/v1/playback/volume', 'POST', { volume: val / 100 }), 200);
+}
+
+async function toggleMute() {
+  const btn = document.getElementById('mute-btn');
+  if (isMuted) {
+    isMuted = false;
+    document.getElementById('vol').value = volumeBeforeMute;
+    document.getElementById('vol-out').textContent = volumeBeforeMute;
+    await api('/api/v1/playback/volume', 'POST', { volume: volumeBeforeMute / 100 });
+    btn.querySelector('i').className = 'ti ti-volume-3';
+    btn.classList.remove('active');
+  } else {
+    volumeBeforeMute = parseInt(document.getElementById('vol').value);
+    isMuted = true;
+    document.getElementById('vol').value = 0;
+    document.getElementById('vol-out').textContent = 0;
+    await api('/api/v1/playback/volume', 'POST', { volume: 0 });
+    btn.querySelector('i').className = 'ti ti-volume-off';
+    btn.classList.add('active');
+  }
+}
+function setSearchType(type) {
+  searchType = type;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + type).classList.add('active');
+  doSearch();
+}
+
+function searchDebounce() { clearTimeout(searchTimer); searchTimer = setTimeout(doSearch, 400); }
+
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  const el = document.getElementById('search-results');
+  if (!q) { el.innerHTML = `<div class="empty">${t('search_prompt')}</div>`; return; }
+  el.innerHTML = `<div class="loading">${t('searching')}</div>`;
+  const res = await amapi('/v1/catalog/' + storefrontCountry + '/search?term=' + encodeURIComponent(q) + '&types=' + searchType + '&limit=20');
+  if (!res?.data?.results) { el.innerHTML = `<div class="empty">${t('no_results')}</div>`; return; }
+  const results = res.data.results;
+  let html = '';
+  if (searchType === 'songs' && results.songs?.data) {
+    html = results.songs.data.map(s => {
+      const a = s.attributes;
+      return `<div class="item" onclick="playItem('songs','${s.id}')">
+        ${renderArt(a.artwork?.url)}
+        <div class="item-info"><div class="item-name">${a.name}</div><div class="item-sub">${a.artistName} · ${a.albumName}</div></div>
+        <button class="item-action" onclick="event.stopPropagation();playNext('songs','${s.id}')"><i class="ti ti-player-track-next"></i></button>
+      </div>`;
+    }).join('');
+  } else if (searchType === 'albums' && results.albums?.data) {
+    html = results.albums.data.map(s => {
+      const a = s.attributes;
+      return `<div class="item" onclick="playItem('albums','${s.id}')">
+        ${renderArt(a.artwork?.url)}
+        <div class="item-info"><div class="item-name">${a.name}</div><div class="item-sub">${a.artistName} · ${a.releaseDate?.slice(0,4) || ''}</div></div>
+      </div>`;
+    }).join('');
+  } else if (searchType === 'artists' && results.artists?.data) {
+    html = results.artists.data.map(s => {
+      const a = s.attributes;
+      return `<div class="item" onclick="browseArtist('${s.id}')">
+        ${renderArt(a.artwork?.url, 'ti-user', true)}
+        <div class="item-info"><div class="item-name">${a.name}</div><div class="item-sub">${t('artist')}</div></div>
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML = html || `<div class="empty">${t('no_results')}</div>`;
+}
+
+async function playItem(type, id) {
+  await api('/api/v1/playback/play-item', 'POST', { type, id: String(id) });
+  showPage('player');
+  let attempts = 0;
+  const check = async () => {
+    attempts++;
+    const playing = await api('/api/v1/playback/is-playing');
+    if (playing?.is_playing) {
+      isPlaying = true;
+      document.getElementById('play-icon').className = 'ti ti-player-pause-filled';
+      fetchStatus();
+    } else if (attempts < 6) {
+      setTimeout(check, 800);
+    } else {
+      await api('/api/v1/playback/play', 'POST');
+      fetchStatus();
+    }
+  };
+  setTimeout(check, 600);
+}
+
+async function playNext(type, id) {
+  await api('/api/v1/playback/play-next', 'POST', { type, id: String(id) });
+  setErr(t('added_as_next'));
+}
+
+async function browseArtist(id) {
+  document.getElementById('search-input').value = '';
+  const el = document.getElementById('search-results');
+  el.innerHTML = `<div class="loading">${t('loading_artist')}</div>`;
+  const res = await amapi('/v1/catalog/' + storefrontCountry + '/artists/' + id + '/albums?limit=20');
+  if (!res?.data?.data) { el.innerHTML = `<div class="empty">${t('no_albums')}</div>`; return; }
+  el.innerHTML = `<div style="color:#888;font-size:13px;margin-bottom:8px;cursor:pointer" onclick="setSearchType(searchType)">${t('back')}</div>` +
+    res.data.data.map(s => {
+      const a = s.attributes;
+      return `<div class="item" onclick="playItem('albums','${s.id}')">
+        ${renderArt(a.artwork?.url)}
+        <div class="item-info"><div class="item-name">${a.name}</div><div class="item-sub">${a.releaseDate?.slice(0,4) || ''}</div></div>
+      </div>`;
+    }).join('');
+}
+
+async function loadPlaylists() {
+  const el = document.getElementById('playlist-list');
+  el.innerHTML = `<div class="loading">${t('loading')}</div>`;
+  const res = await amapi('/v1/me/library/playlists?limit=100');
+  if (!res?.data?.data) { el.innerHTML = `<div class="empty">${t('no_playlists')}</div>`; return; }
+  el.innerHTML = res.data.data.map(p => {
+    const a = p.attributes;
+    return `<div class="item" onclick="playItem('library-playlists','${p.id}')">
+      ${renderArt(a.artwork?.url, 'ti-playlist')}
+      <div class="item-info"><div class="item-name">${a.name}</div><div class="item-sub">${a.description?.standard || ''}</div></div>
+    </div>`;
+  }).join('') || `<div class="empty">${t('no_playlists')}</div>`;
+}
+
+async function loadQueue() {
+  const el = document.getElementById('queue-list');
+  el.innerHTML = `<div class="loading">${t('loading_queue')}</div>`;
+  const data = await api('/api/v1/playback/queue');
+  if (!data || !Array.isArray(data) || !data.length) { el.innerHTML = `<div class="empty">${t('queue_empty')}</div>`; return; }
+  const currentIndex = data.findIndex(item => item._state?.current === 2);
+  el.innerHTML = data.map((item, i) => {
+    const a = item.attributes || item;
+    const isCurrent = i === currentIndex;
+    return `<div class="queue-item ${isCurrent ? 'current' : ''}">
+      <span class="queue-num">${isCurrent ? '<i class="ti ti-volume"></i>' : i + 1}</span>
+      ${renderArt(a.artwork?.url)}
+      <div class="item-info"><div class="item-name">${a.name || t('unknown')}</div><div class="item-sub">${a.artistName || ''}</div></div>
+    </div>`;
+  }).join('');
+}
+
+async function clearQueue() { await api('/api/v1/playback/queue/clear-queue', 'POST'); loadQueue(); }
+
+async function loadSettings() {
+  const res = await fetch('/settings/config');
+  const cfg = await res.json();
+  storefrontCountry = cfg.country || 'no';
+  document.getElementById('settings-language').value = cfg.language || 'no';
+  document.getElementById('settings-country').value = cfg.country || 'no';
+  const statusEl = document.getElementById('token-status');
+  statusEl.textContent = cfg.hasToken ? t('settings_token_set') : t('settings_token_missing');
+  statusEl.style.color = cfg.hasToken ? '#2ecc71' : '#e05555';
+}
+
+async function saveSettings() {
+  const token = document.getElementById('settings-token').value.trim();
+  const language = document.getElementById('settings-language').value;
+  const country = document.getElementById('settings-country').value;
+  const body = { language, country };
+  if (token) body.token = token;
+  const res = await fetch('/settings/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) {
+    storefrontCountry = country;
+    document.getElementById('settings-token').value = '';
+    await loadLang(language);
+    const msgEl = document.getElementById('settings-msg');
+    msgEl.textContent = t('settings_saved');
+    setTimeout(() => msgEl.textContent = '', 2000);
+    loadSettings();
+  }
+}
+
+setInterval(() => {
+  if (isPlaying && currentDuration > 0) { currentTime = Math.min(currentDuration, currentTime + 1000); updateProgress(); }
+}, 1000);
+
+async function init() {
+  const res = await fetch('/settings/config');
+  const cfg = await res.json();
+  storefrontCountry = cfg.country || 'no';
+  await loadLang(cfg.language || 'no');
+  fetchStatus();
+}
+
+init();
+setInterval(fetchStatus, 8000);
+</script>
+</body>
+</html>
