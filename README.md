@@ -2,6 +2,8 @@
 
 A self-hosted Apple Music remote control webapp for [Cider](https://cider.sh), accessible from any device on your network via a mobile-friendly web interface.
 
+![Player view](screenshots/IMG_9651.jpeg)
+
 Built with a Python proxy server and vanilla HTML/JS. No frameworks, no dependencies beyond Python 3.
 
 > **Disclaimer:** This is an independent, unofficial project and is not developed, supported or endorsed by Cider Collective. It works by utilizing the local RPC API that Cider exposes, as documented at [cider.sh/docs/client/rpc](https://cider.sh/docs/client/rpc). Use it at your own discretion.
